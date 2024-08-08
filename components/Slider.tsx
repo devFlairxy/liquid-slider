@@ -18,6 +18,8 @@ import { snapPoint, useVector } from 'react-native-redash';
 
 const PREV = WIDTH;
 const NEXT = 0;
+const LEFT_SNAP_POINTS = [MARGIN_WIDTH, PREV];
+const RIGHT_SNAP_POINTS = [NEXT, WIDTH - MARGIN_WIDTH];
 
 interface SliderProps {
   index: number;
@@ -38,15 +40,17 @@ const Slider = ({
   const hasNext = !!next;
   const activeSide = useSharedValue(Side.NONE);
   const isTransitioningLeft = useSharedValue(false);
+  const zIndex = useSharedValue(0);
   const isTransitioningRight = useSharedValue(false);
   const left = useVector(0, HEIGHT / 2);
   const right = useVector(0, HEIGHT);
 
   const panGesture = Gesture.Pan()
     .onStart(({ x }) => {
-      if (x <= MARGIN_WIDTH) {
+      if (x <= MARGIN_WIDTH && hasPrev) {
         activeSide.value = Side.LEFT;
-      } else if (x >= WIDTH - MARGIN_WIDTH) {
+        zIndex.value = 100;
+      } else if (x >= WIDTH - MARGIN_WIDTH && hasNext) {
         activeSide.value = Side.RIGHT;
       } else {
         activeSide.value = Side.NONE;
@@ -63,39 +67,42 @@ const Slider = ({
     })
     .onFinalize(({ x, velocityX, velocityY }) => {
       if (activeSide.value === Side.LEFT) {
-        const snapPoints = [MIN_LEDGE, WIDTH];
-        const dest = snapPoint(x, velocityX, snapPoints);
-        isTransitioningLeft.value = dest === WIDTH;
+        const dest = snapPoint(x, velocityX, LEFT_SNAP_POINTS);
+        isTransitioningLeft.value = dest === PREV;
         left.x.value = withSpring(
           dest,
           {
             velocity: velocityX,
-            overshootClamping: isTransitioningLeft.value,
+            overshootClamping: isTransitioningLeft.value ? true : false,
             restSpeedThreshold: isTransitioningLeft.value ? 100 : 0.01,
             restDisplacementThreshold: isTransitioningLeft.value ? 100 : 0.01,
           },
           () => {
             if (isTransitioningLeft.value) {
               runOnJS(setIndex)(index - 1);
+            } else {
+              zIndex.value = 0;
+              activeSide.value = Side.NONE;
             }
           }
         );
         left.y.value = withSpring(HEIGHT / 2, { velocity: velocityY });
       } else if (activeSide.value === Side.RIGHT) {
-        const snapPoints = [WIDTH - MIN_LEDGE, 0];
-        const dest = snapPoint(x, velocityX, snapPoints);
-        isTransitioningRight.value = dest === 0;
+        const dest = snapPoint(x, velocityX, RIGHT_SNAP_POINTS);
+        isTransitioningRight.value = dest === NEXT;
         right.x.value = withSpring(
           WIDTH - dest,
           {
             velocity: velocityX,
-            overshootClamping: isTransitioningRight.value,
+            overshootClamping: isTransitioningRight.value ? true : false,
             restSpeedThreshold: isTransitioningRight.value ? 100 : 0.01,
             restDisplacementThreshold: isTransitioningRight.value ? 100 : 0.01,
           },
           () => {
             if (isTransitioningRight.value) {
               runOnJS(setIndex)(index + 1);
+            } else {
+              activeSide.value = Side.NONE;
             }
           }
         );

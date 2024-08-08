@@ -31,12 +31,12 @@ const styles = StyleSheet.create({
   },
 });
 
-interface SlideProps {
+export interface SlideProps {
   slide: {
     color: string;
     title: string;
     description: string;
-    picture: ReturnType<typeof require>;
+    picture: any;
   };
 }
 
